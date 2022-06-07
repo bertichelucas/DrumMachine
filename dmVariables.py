@@ -31,8 +31,8 @@ save_menu = False
 load_menu = False
 beat_name = ''
 typing = False
-unclicked = -1
-clicked = 1
+load_index = -1
+
 
 #saveRoute
 save_route = 'saved_beats.csv'

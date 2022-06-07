@@ -20,10 +20,10 @@ def main():
     clicked = [[-1 for _ in range(var.beats)] for _ in range(var.instruments)] #Creates a list of lists with the beats per instrument. If the beat is clicked its value will be 1. Otherwise -1
     
     active_channels = [1 for _ in range(var.instruments)] #All our instruments channels
-
     sound_list = load_sounds()
 
     while run:
+        
         timer.tick(var.fps) #updates the clock, called once per frame. Computes how many ms passed since last call
         screen.fill(var.background_color)
 
@@ -47,8 +47,12 @@ def main():
         if var.load_menu:
             exit_button, load_menu_button = draw_menu(screen, label_font, 'Load')
             delete_button = draw_delete_button(screen,label_font)
-            loaded_beats = draw_loaded_beats(screen, label_font)
-
+            loaded_rectangle, loaded_beats, var.load_index = draw_loaded_beats(screen, label_font, var.load_index)
+            if 0 <= var.load_index < len(loaded_beats):
+                beat_info = parse_beat(loaded_beats[var.load_index])
+            else:
+                beat_info = []
+            
 
         if var.beat_changed:
             play_notes(clicked, sound_list, active_channels)
@@ -101,6 +105,21 @@ def main():
                     var.save_menu = var.load_menu = var.typing = False
                     var.playing = True
                     var.beat_name = ''
+                if var.load_menu:
+                    if loaded_rectangle.collidepoint(event.pos): #Clicked an space
+                        var.load_index = (event.pos[1] - 100) // 50
+                    if delete_button.collidepoint(event.pos):
+                        if 0 <= var.load_index < len(loaded_beats):
+                            pass
+                    if load_menu_button.collidepoint(event.pos):
+                        if beat_info:
+                            var.beats = beat_info[0]
+                            var.bpm = beat_info[1]
+                            clicked = beat_info[2]
+                            var.load_index = -1
+                            var.load_menu = False
+                            var.playing = True
+
                 if var.save_menu:
                     if input_box.collidepoint(event.pos): #player clicks input option
                         if not var.typing:
@@ -252,20 +271,40 @@ def draw_menu(screen, label_font, type):
     return (exit_button, menu_button)
 
 
-def draw_loaded_beats(screen, medium_font):
+def draw_loaded_beats(screen, medium_font, load_index):
     #Draw Loaded Beats
+    
     loaded_rectangle = pygame.draw.rect(screen,var.primary_color,[190, 90, 1000, 600], 3, 5)
     route = open('saved_beats.csv')
     csv_reader = csv.reader(route, delimiter=';')
     count = 0
+    loaded_beats = []
     for line in csv_reader:
+        loaded_beats.append(line)
         count += 1
+        if load_index == count -1:
+            pygame.draw.rect(screen, var.grey, [190, 100 + load_index * 50, 1000 ,50])
         row_text = medium_font.render(f'{count}  {line[0]}', True, var.secondary_color)
         screen.blit(row_text, (200, 50 + count * 50))
+
     route.close()
-    return loaded_rectangle
+    
+    return loaded_rectangle, loaded_beats, load_index
 
-
+def parse_beat(line):
+    #parses the loaded info to actual info in the game.
+    _, beats, bpm, clicked = line
+    beats = int(beats)
+    bpm = int(bpm)
+    clicked = clicked[2:-2]
+    clicked_rows = list(clicked.split('], ['))
+    parsed_clicked = []
+    for row in clicked_rows:
+        row = row.split(', ')
+        for i in range(len(row)):
+            row[i] = int(row[i])
+        parsed_clicked.append(row)
+    return [beats, bpm, parsed_clicked]
 
 def draw_delete_button(screen, label_font):
     #Draws the delete button inside the load menu
